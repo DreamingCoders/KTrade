@@ -1,20 +1,14 @@
 <?php
 /**
- * Kubeo Marketplace Mock API
+ * Kubeo Marketplace
  * --------------------------
  * This script demonstrates fetching items from Kubeo Marketplace.
- * It does not rely on a real API, but instead scrapes the HTML page.
- * It also formats items in a way similar to trading sites like rbx.trade.
- *
  * Features:
  *  - Scrape item name, price, and image
  *  - Generate direct links to each item page (e.g., https://kubeo.net/#/item/136)
- *  - Mock “direct API” endpoint style for demonstration
- *
- * NOTE: This is a mock implementation and intended for showcasing purposes only.
  */
-$marketplaceURL = "https://kubeo.net/#/marketplace"; // URL of the marketplace page (SPA hash route; may require headless JS in production)
-// cURL request to fetch page HTML. This version basically grabs it via HTML there is an API version as well depending on what you want to really do honestly.
+$marketplaceURL = "https://kubeo.net/#/marketplace"; // URL of the marketplace page (SPA hash route; may need js)
+// cURL to get HTML.
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $marketplaceURL);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -22,7 +16,6 @@ curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0"); // mimic browser
 $html = curl_exec($ch);
 curl_close($ch);
-// Use DOMDocument to parse HTML
 libxml_use_internal_errors(true);
 $dom = new DOMDocument();
 $dom->loadHTML($html);
@@ -37,7 +30,6 @@ foreach ($items as $item) {
     $price = $priceNode ? trim(str_replace(["\n", "\t"], "", $priceNode->nodeValue)) : "Free";
     $img = $xpath->query(".//img[contains(@src,'items')]", $item)->item(0)?->getAttribute('src') ?? "";
     $link = $item->getAttribute('href') ?: "#";
-    // Push to mock API array
     $mockAPI[] = [
         "name" => $name,
         "price" => $price,
@@ -45,7 +37,7 @@ foreach ($items as $item) {
         "link" => "https://kubeo.net" . $link // direct item page
     ];
 }
-// Render items in a “trade-style” layout
+// dom
 ?>
 <!DOCTYPE html>
 <html lang="en">
