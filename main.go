@@ -10,7 +10,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// MarketplaceItem represents a single marketplace item
 type MarketplaceItem struct {
 	Name  string `json:"name"`
 	Price string `json:"price"`
@@ -33,7 +32,6 @@ func fetchMarketplaceItems() ([]MarketplaceItem, error) {
 		return nil, err
 	}
 	items := []MarketplaceItem{}
-	// Example selector matching your PHP logic; adjust if Kubeo changes layout
 	doc.Find("div.grid a").Each(func(i int, s *goquery.Selection) {
 		name := strings.TrimSpace(s.Find("p.truncate").Text())
 		if name == "" {
@@ -60,41 +58,83 @@ func fetchMarketplaceItems() ([]MarketplaceItem, error) {
 
 func main() {
 	app := fiber.New()
-	app.Get("/", func(c *fiber.Ctx) error {
+
+	// JSON API endpoint
+	app.Get("/api/items", func(c *fiber.Ctx) error {
 		items, err := fetchMarketplaceItems()
 		if err != nil {
-			return c.Status(500).SendString(fmt.Sprintf("Error fetching items: %v", err))
+			return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 		}
-		html := `<!DOCTYPE html>
+		return c.JSON(items)
+	})
+
+	// SPA served directly
+	app.Get("/", func(c *fiber.Ctx) error {
+		html := `
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Kubeo Marketplace Mock API</title>
-<style>
-body { font-family: Arial, sans-serif; background: #121215; color: #eee; margin: 20px; }
-.grid { display: flex; flex-wrap: wrap; gap: 15px; }
-.card { background: #1b1b1f; padding: 10px; border-radius: 8px; width: 150px; text-align: center; transition: transform 0.2s; }
-.card:hover { transform: scale(1.05); }
-.card img { width: 100%; height: auto; border-radius: 4px; }
-.card p { margin: 5px 0; }
-.card a { color: #4fc3f7; text-decoration: none; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubeo Marketplace Mock SPA</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
-<body>
-<h1>Kubeo Marketplace (Mock API)</h1>
-<p>This page demonstrates a mock "direct API" for fetching marketplace items.</p>
-<div class="grid">`
-		for _, item := range items {
-			html += fmt.Sprintf(`<div class="card">
-<a href="%s" target="_blank"><img src="%s" alt="%s"></a>
-<p>%s</p>
-<p><strong>%s</strong></p>
-<a href="%s" target="_blank">View Item</a>
-</div>`, item.Link, item.Img, item.Name, item.Name, item.Price, item.Link)
-		}
-		html += `</div></body></html>`
+<body class="bg-dark text-light">
+<div id="app" class="container py-4">
+  <h1 class="mb-4">Kubeo Marketplace</h1>
+  <div class="mb-3">
+    <button class="btn btn-primary me-2" @click="login">Login</button>
+    <button class="btn btn-secondary" @click="register">Register</button>
+  </div>
+  <p v-if="user">Logged in as: {{ user }}</p>
+  <div class="row row-cols-1 row-cols-md-4 g-4">
+    <div class="col" v-for="item in items" :key="item.link">
+      <div class="card h-100 bg-secondary text-light">
+        <img :src="item.img" class="card-img-top" :alt="item.name">
+        <div class="card-body">
+          <h5 class="card-title">{{ item.name }}</h5>
+          <p class="card-text"><strong>{{ item.price }}</strong></p>
+          <a :href="item.link" target="_blank" class="btn btn-info btn-sm mb-2">View Item</a>
+          <button class="btn btn-warning btn-sm" @click="sell(item)">Sell</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const { createApp } = Vue;
+createApp({
+  data() {
+    return { items: [], user: null }
+  },
+  methods: {
+    async loadItems() {
+      try {
+        const res = await fetch('/api/items');
+        this.items = await res.json();
+      } catch(e) { console.error(e) }
+    },
+    login() { this.user = prompt("Enter username:"); },
+    register() { this.user = prompt("Choose username:"); },
+    sell(item) {
+      if(!this.user){ alert("Please login first."); return; }
+      alert("Kubeo does not allow selling off-platform 😅");
+      /* Uncomment below for mock sell code:
+      console.log("Selling item:", item);
+      alert("Mock sell: " + item.name + " for " + item.price);
+      */
+    }
+  },
+  mounted() { this.loadItems(); }
+}).mount('#app');
+</script>
+</body>
+</html>
+		`
 		return c.Type("html").SendString(html)
 	})
-	log.Println("Starting server on http://localhost:3000")
+
+	log.Println("Server running at http://localhost:3000")
 	log.Fatal(app.Listen(":3000"))
 }
